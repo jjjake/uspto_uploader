@@ -85,7 +85,7 @@ if __name__ == '__main__':
         item_dir = '{d}/'.format(d=str(i))
         md = get_metadata(item, i)
         h = {'x-archive-queue-derive': 0}
-        #resps = item.upload(item_dir, metadata=md, headers=h, verbose=True, checksum=True)
+        resps = item.upload(item_dir, metadata=md, headers=h, verbose=True, checksum=True)
 
         # Update metadata.
         #resp = item.modify_metadata(md)
