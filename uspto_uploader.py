@@ -30,14 +30,13 @@ def item_generator():
 # ________________________________________________________________________________________
 def get_csv_metadata(identifier):
     f = open('/Volumes/patent/patentapplications.csv') 
-    csv_md = {}
     for md in csv.DictReader(f):
         if md.get('folder') == identifier:
-            csv_md['firstnamedinventor'] = md.get('firstnamedinventor')
-            csv_md['groupartunit'] = md.get('groupartunit') 
-            csv_md['class'] = md.get('class')
-            csv_md['subclass'] = md.get('subclass')
-            return csv_md
+            del md['source']
+            del md['folder']
+            # Empty date values are represented as "0000-00-00", do not
+            # include these fields!
+            return dict((k, v) for (k, v) in md.items() if (v) and (v != '0000-00-00'))
 
 
 # get_metadata()
