@@ -82,4 +82,5 @@ if __name__ == '__main__':
         # Add trailing slash to upload contents of dir, not dir itself.
         item_dir = '{d}/'.format(d=str(i))
         md = get_metadata(item, i)
-        resps = item.upload(item_dir, metadata=md, verbose=True, checksum=True)
+        h = {'x-archive-queue-derive': 0}
+        resps = item.upload(item_dir, metadata=md, headers=h, verbose=True, checksum=True)
