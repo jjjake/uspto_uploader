@@ -43,7 +43,6 @@ def get_csv_metadata(identifier):
 # get_metadata()
 # ________________________________________________________________________________________
 def get_metadata(item, item_dir):
-    csv_md = get_csv_metadata(item.identifier)
     pdfs = list(item_dir.glob('*pdf'))
     html = ('<b>Click the links below to access the documents in this item:</b>'
             '<br /><br />')
@@ -64,13 +63,15 @@ def get_metadata(item, item_dir):
         description=html,
         title=title,
     )
+    csv_md = get_csv_metadata(item.identifier)
+    md.update(csv_md)
     return dict((k, v) for (k, v) in md.items() if v)
 
 
 # main()
 # ________________________________________________________________________________________
 if __name__ == '__main__':
-    for _i, i in enumerate(item_generator()):
+    for i in item_generator():
         identifier = str(i).split('/')[-1]
 
         config = {'logging': {'level': 'INFO'}}
