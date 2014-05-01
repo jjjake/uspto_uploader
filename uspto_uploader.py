@@ -63,6 +63,9 @@ def get_metadata(item, item_dir):
         title=title,
     )
     csv_md = get_csv_metadata(item.identifier)
+    if csv_md['title']:
+        md['description'] = [csv_md['title'], md['description']]
+    del csv_md['title']
     md.update(csv_md)
     return dict((k, v) for (k, v) in md.items() if v)
 
@@ -82,4 +85,7 @@ if __name__ == '__main__':
         item_dir = '{d}/'.format(d=str(i))
         md = get_metadata(item, i)
         h = {'x-archive-queue-derive': 0}
-        resps = item.upload(item_dir, metadata=md, headers=h, verbose=True, checksum=True)
+        #resps = item.upload(item_dir, metadata=md, headers=h, verbose=True, checksum=True)
+
+        # Update metadata.
+        #resp = item.modify_metadata(md)
