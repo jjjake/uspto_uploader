@@ -1,2 +1,3 @@
 pathlib==1.0
 internetarchive==0.5.7
+futures==2.1.6

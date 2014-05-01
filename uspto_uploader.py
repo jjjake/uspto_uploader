@@ -2,13 +2,21 @@
 import pathlib
 import sys
 import csv
+import time
 
-from internetarchive import get_item, log
+import futures
+from internetarchive import get_item, get_tasks
 
 
 __author__ = 'Jake Johnson'
 __license__ = 'AGPL 3'
 __copyright__ = 'Copyright 2014 Internet Archive'
+
+
+# Global settings.
+MAX_WORKERS = 10
+MAX_GREEN_ROWS = 300
+SLEEP_TIME = 60
 
 
 # item_generator()
@@ -63,29 +71,49 @@ def get_metadata(item, item_dir):
         title=title,
     )
     csv_md = get_csv_metadata(item.identifier)
-    if csv_md['title']:
+    if csv_md.get('title'):
         md['description'] = [csv_md['title'], md['description']]
     del csv_md['title']
     md.update(csv_md)
     return dict((k, v) for (k, v) in md.items() if v)
 
 
+# upload()
+# ________________________________________________________________________________________
+def upload(path):
+    # Throttle task submission if number of green rows exceeds 
+    # MAX_GREEN_ROWS.
+    tasks = [t for t in get_tasks(task_type='green') if 'gov.uspto' in t.identifier]
+    while len(tasks) >= MAX_GREEN_ROWS:
+        print('{0} green rows, pausing for {1} seconds.'.format(len(tasks), SLEEP_TIME))
+        time.sleep(SLEEP_TIME)
+
+    identifier = str(path).split('/')[-1]
+    config = {'logging': {'level': 'INFO'}}
+    item = get_item(identifier, config=config)
+
+    # Add trailing slash to upload contents of dir, not dir itself.
+    item_dir = '{d}/'.format(d=str(path))
+    md = get_metadata(item, path)
+    h = {'x-archive-queue-derive': 0}
+    resp = item.upload(item_dir, metadata=md, headers=h, verbose=True, checksum=True)
+
+    # Update metadata.
+    #resp = item.modify_metadata(md)
+
+    return resp
+
+
 # main()
 # ________________________________________________________________________________________
 if __name__ == '__main__':
-    for i in item_generator():
-        identifier = str(i).split('/')[-1]
-
-        config = {'logging': {'level': 'INFO'}}
-        item = get_item(identifier, config=config)
-
-        print('{0}:'.format(item.identifier))
-
-        # Add trailing slash to upload contents of dir, not dir itself.
-        item_dir = '{d}/'.format(d=str(i))
-        md = get_metadata(item, i)
-        h = {'x-archive-queue-derive': 0}
-        resps = item.upload(item_dir, metadata=md, headers=h, verbose=True, checksum=True)
-
-        # Update metadata.
-        #resp = item.modify_metadata(md)
+    with futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        future_to_path = {
+            executor.submit(upload, path): path for path in item_generator()
+        }
+        for future in futures.as_completed(future_to_path):
+            path = future_to_path[future]
+            try:
+                resp = future.result()
+            except Exception as exc:
+                print('%r generated an exception: %s' % (path, exc))
