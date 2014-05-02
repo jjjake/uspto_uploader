@@ -1,10 +1,9 @@
 #!/usr/bin/env python
+import argparse
 import pathlib
-import sys
 import csv
 import time
 
-import futures
 from internetarchive import get_item, get_tasks
 
 
@@ -14,24 +13,8 @@ __copyright__ = 'Copyright 2014 Internet Archive'
 
 
 # Global settings.
-MAX_WORKERS = 10
 MAX_GREEN_ROWS = 300
 SLEEP_TIME = 60
-
-
-# item_generator()
-# ________________________________________________________________________________________
-def item_generator():
-    p = pathlib.Path('/Volumes/patent')
-    prev_dir = None
-    for f in p.glob('**/*pdf'):
-        if str(f).startswith('/Volumes/patent/.'):
-            continue
-        if prev_dir != f.parent:
-            prev_dir = f.parent
-            yield f.parent
-        else:
-            prev_dir = f.parent
 
 
 # get_metadata()
@@ -42,6 +25,7 @@ def get_csv_metadata(identifier):
         if md.get('folder') == identifier:
             del md['source']
             del md['folder']
+            f.close()
             # Empty date values are represented as "0000-00-00", do not
             # include these fields!
             return dict((k, v) for (k, v) in md.items() if (v) and (v != '0000-00-00'))
@@ -54,7 +38,6 @@ def get_metadata(item, item_dir):
     html = ('<b>Click the links below to access the documents in this item:</b>'
             '<br /><br />')
     for pdf in pdfs:
-        url = '//archive.org/download/{i}/{f}'.format(i=item.identifier, f=pdf.name)
         html += ('{f} <a href="//archive.org/download/{id}/{f}_text.pdf">pdf</a>'
                  ' <a href="//archive.org/stream/{id}/{f}">stream</a>'
                  '<br />'.format(f=pdf.stem, id=item.identifier))
@@ -107,13 +90,13 @@ def upload(path):
 # main()
 # ________________________________________________________________________________________
 if __name__ == '__main__':
-    with futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        future_to_path = {
-            executor.submit(upload, path): path for path in item_generator()
-        }
-        for future in futures.as_completed(future_to_path):
-            path = future_to_path[future]
-            try:
-                resp = future.result()
-            except Exception as exc:
-                print('%r generated an exception: %s' % (path, exc))
+    parser = argparse.ArgumentParser(description='Upload USPTO documents.')
+    parser.add_argument('path', metavar='<path>...', type=str, nargs='+')
+    args = parser.parse_args()
+    for p in args.path:
+        path = pathlib.Path(p)
+        if str(path).startswith('/Volumes/patent/.'):
+            continue
+        if not str(path).startswith('/Volumes/patent/'):
+            continue
+        resp = upload(path)
